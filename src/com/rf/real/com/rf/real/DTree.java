@@ -1,5 +1,6 @@
 package com.rf.real;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -9,7 +10,7 @@ import java.util.List;
  * Creates a decision tree based on the specifications of random forest trees
  *
  */
-public class DTree {
+public class DTree implements Serializable {
 
 
 	/** Instead of checking each index we'll skip every INDEX_SKIP indices unless there's less than MIN_SIZE_TO_CHECK_EACH*/
@@ -37,6 +38,57 @@ public class DTree {
 	/** This keeps track of all the predictions done by this tree */
 	public ArrayList<Integer> predictions;
 
+
+	/**
+	 * Writes Dtree object from file.
+	 * TO REDUCE MEMORY USAGE, CACHING
+	 *
+	 * @parma tree      DTree object that will be written to file
+	 * @param name      Describes filename, without .ser extension
+	 */
+	public static void writeTreeToDisk(DTree tree, String name){
+		// write object to file
+		FileOutputStream fos = null;
+		try {
+			fos = new FileOutputStream(name+".ser");
+			ObjectOutputStream oos = new ObjectOutputStream(fos);
+			DTree dtree = tree;
+			dtree.forest = null;
+			oos.writeObject(dtree);
+			oos.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Reads Dtree object from file.
+	 * TO REDUCE MEMORY USAGE, CACHING
+	 *
+	 * @param name      Describes filename, without .ser extension
+	 */
+	public static DTree readTreeFromDisk(String name){
+		// read object from file
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(name+".ser");
+			ObjectInputStream ois = new ObjectInputStream(fis);
+			DTree result = (DTree) ois.readObject();
+			ois.close();
+			return result;
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
 	/**
 	 * This constructs a decision tree from a data matrix.
 	 * It first creates a bootstrap sample, the train data matrix, as well as the left out records, 
@@ -50,7 +102,7 @@ public class DTree {
 	public DTree(ArrayList<int[]> data,RandomForest forest,int num){
 		this.forest=forest;
 		N=data.size();
-		importances=new int[RandomForest.M];
+		importances=new int[RandomForest.M];		//n.o. attributes
 		predictions = new ArrayList<Integer>();
 	
 		//System.out.println("Make a Dtree num : "+num+" with N:"+N+" M:"+RandomForest.M+" Ms:"+RandomForest.Ms);
@@ -65,6 +117,12 @@ public class DTree {
 		root=CreateTree(train,num);//creating tree using training data
 		//CalcTreeVariableImportanceAndError(test,num);
 		FlushData(root);
+	}
+	/**
+	 * @param o Forest will be set to this object
+	 */
+	public void setForest(Object o){
+		forest= (RandomForest) o;
 	}
 	/**
 	 * Responsible for gauging the error rate of this tree and 
@@ -218,7 +276,7 @@ public class DTree {
 	 * @author kapelner
 	 *
 	 */
-	private class TreeNode implements Cloneable{
+	private class TreeNode implements Cloneable, Serializable {
 		public boolean isLeaf;
 		public TreeNode left;
 		public TreeNode right;
@@ -272,8 +330,8 @@ public class DTree {
 	 * , then look through the values from lowest to 
 	 * highest. If value i is not equal to value i+1, record i in the list of "indicesToCheck."
 	 * This speeds up the splitting. If the number of indices in indicesToCheck >  MIN_SIZE_TO_CHECK_EACH
-	 * then we will only {@link #CheckPosition(int, int, int, ImageAnalysisStatistics.DTree.DoubleWrap, ImageAnalysisStatistics.DTree.TreeNode) check} the
-	 * entropy at every {@link #INDEX_SKIP INDEX_SKIP} index otherwise, we {@link #CheckPosition(int, int, int, ImageAnalysisStatistics.DTree.DoubleWrap, ImageAnalysisStatistics.DTree.TreeNode) check}
+	 * then we will only {@link #//CheckPosition(int, int, int, ImageAnalysisStatistics.DTree.DoubleWrap, ImageAnalysisStatistics.DTree.TreeNode) check} the
+	 * entropy at every {@link #INDEX_SKIP INDEX_SKIP} index otherwise, we {@link #//CheckPosition(int, int, int, ImageAnalysisStatistics.DTree.DoubleWrap, ImageAnalysisStatistics.DTree.TreeNode) check}
 	 * the entropy for all. The "E" variable records the entropy and we are trying to find the minimum in which to split on
 	 * </li>
 	 * <li>Step D
@@ -282,7 +340,7 @@ public class DTree {
 	 * the class of the record. If it has less than {@link #MIN_NODE_SIZE MIN_NODE_SIZE}
 	 * records, then we mark it as a leaf and set its class equal to the {@link #GetMajorityClass(List) majority class}.
 	 * If it has more, then we do a manual check on its data records and if all have the same class, then it
-	 * is marked as a leaf. If not, then we run {@link #RecursiveSplit(ImageAnalysisStatistics.DTree.TreeNode) RecursiveSplit} on
+	 * is marked as a leaf. If not, then we run {@link #//RecursiveSplit(ImageAnalysisStatistics.DTree.TreeNode) RecursiveSplit} on
 	 * that node
 	 * </li>
 	 * </ul>
@@ -437,7 +495,8 @@ public class DTree {
 		int[] counts=new int[RandomForest.C];
 		for (int[] record:data){
 			int Class=record[record.length-1];//GetClass(record);
-			counts[Class-1]++;
+            if(Class>0)
+			    counts[Class-1]++;
 		}
 		int index=-99;
 		int max=Integer.MIN_VALUE;
@@ -617,8 +676,10 @@ public class DTree {
 //		for (int i:counts)
 //			System.out.println(i+" ");
 		
-		for (int[] record:records)
-			counts[GetClass(record)-1]++;
+		for (int[] record:records) {
+			if(GetClass(record) - 1 >= 0)
+				counts[GetClass(record) - 1]++;
+		}
 
 		double[] ps=new double[RandomForest.C];
 		for (int c=0;c<RandomForest.C;c++)

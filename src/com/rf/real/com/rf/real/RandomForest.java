@@ -1,5 +1,6 @@
 package com.rf.real;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
@@ -9,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  * Random Forest
  * 
  */
-public class RandomForest {
+public class RandomForest implements Serializable {
 	
 	/** the number of threads to use when generating the forest */
 	private static final int NUM_THREADS=Runtime.getRuntime().availableProcessors();
@@ -38,7 +39,7 @@ public class RandomForest {
 	/** This maps from a data record to an array that records the classifications by the trees where it was a "left out" record (the indices are the class and the values are the counts) */
 	private HashMap<int[],int[]> estimateOOB;
 	/** This holds all of the predictions of trees in a Forest */
-	private ArrayList<ArrayList<Integer>> Prediction;
+	private static ArrayList<ArrayList<Integer>> Prediction;
 	/** the total forest-wide error */
 	private double error;
 	/** the thread pool that controls the generation of the decision trees */
@@ -47,14 +48,16 @@ public class RandomForest {
 	private ArrayList<int[]> data;
 	/** the data on which produced random forest will be tested*/
 	private ArrayList<int[]> testdata;
+	/** model files name*/
+	private String modelFileName;
 	/**
 	 * Initializes a Random forest creation
 	 * 
 	 * @param numTrees			the number of trees in the forest
 	 * @param data				the training data used to generate the forest
-	 * @param buildProgress		records the progress of the random forest creation
+	 * @param //buildProgress		records the progress of the random forest creation
 	 */
-	public RandomForest(int numTrees, ArrayList<int[]> data, ArrayList<int[]> t_data ){
+	public RandomForest(int numTrees, ArrayList<int[]> data, ArrayList<int[]> t_data, String modelFileName ){
 		this.numTrees=numTrees;
 		this.data=data;
 		this.testdata=t_data;
@@ -62,18 +65,21 @@ public class RandomForest {
 		update=100/((double)numTrees);
 		progress=0;
 		StartTimer();
-		System.out.println("creating "+numTrees+" trees in a random Forest. . . ");
+		//COMMENT NEXT 6 LINES TO BIG DATA TESTING
+		/*System.out.println("creating "+numTrees+" trees in a random Forest. . . ");
 		System.out.println("total data size is "+data.size());
 		System.out.println("number of attributes "+(data.get(0).length-1));
 		System.out.println("number of selected attributes "+((int)Math.round(Math.log(data.get(0).length-1)/Math.log(2)+1)));
 //		ArrayList<Datum> master=AssignClassesAndGetAllData(data);
-		estimateOOB=new HashMap<int[],int[]>(data.size());
+		estimateOOB=new HashMap<int[],int[]>(data.size());*/
 		Prediction = new ArrayList<ArrayList<Integer>>();
+		this.modelFileName=modelFileName;
 	}
 	/**
 	 * Begins the random forest creation
 	 */
 	public void Start() {
+		/*//THIS SECTION IS FOR THE CREATING MODEL AND DOING THE MINI TEST
 		System.out.println("Number of threads started : "+NUM_THREADS);
 		System.out.print("Running...");
 		treePool=Executors.newFixedThreadPool(NUM_THREADS);
@@ -89,16 +95,35 @@ public class RandomForest {
 //	    buildProgress.setValue(100); //just to make sure
 		System.out.println("");
 		System.out.println("Finished tree construction");
-		TestForest(trees,testdata);
+
+		for(DTree dt : trees){          //save model to file
+			DTree.writeTreeToDisk(dt, modelFileName);             //save model to file for future readings
+		}*/
+		trees.add(DTree.readTreeFromDisk(modelFileName));           //read model from file
+
+		//TESTING
+		//TestForest(trees,testdata);
 	    //CalcErrorRate();
 	    //CalcImportances();
-	    System.out.println("Done in "+TimeElapsed(time_o));
+	    System.out.println("Model done in "+TimeElapsed(time_o));
+	}
+
+
+	/**
+	 * Returns the model that is created.
+	 */
+	public ArrayList<DTree> getModel(){
+		for(DTree dt : trees){
+			dt.setForest(null);             //no more needed
+		}
+		return trees;
 	}
 	
 	/**
-	 * 
+	 * @param collec_tree       Random forest model that is created
+	 * @param test_data         Testing data
 	 */
-	private void TestForest(ArrayList<DTree> collec_tree,ArrayList<int[]> test_data ) {
+	public static double TestForest(ArrayList<DTree> collec_tree,ArrayList<int[]> test_data ) {
 		int correstness = 0 ;int k=0;
 		ArrayList<Integer> ActualValues = new ArrayList<Integer>();
 		for(int[] rec:test_data){
@@ -120,8 +145,10 @@ public class RandomForest {
 			}
 		}
 		System.out.println("Accuracy of Forest is : "+(100*correstness/test_data.size())+"%");
+		return (100*correstness/test_data.size());
 	}
-	private int ModeOf(ArrayList<Integer> treePredict) {
+
+	private static int ModeOf(ArrayList<Integer> treePredict) {
 		// TODO Auto-generated method stub
 		int max=0,maxclass=-1;
 		for(int i=0; i<treePredict.size();i++){

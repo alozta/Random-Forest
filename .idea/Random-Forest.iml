@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/src/com/rf/real/out" />
+    <output-test url="file://$MODULE_DIR$/src/com/rf/real/test/Random-Forest" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/src/com/rf/real">
+      <sourceFolder url="file://$MODULE_DIR$/src/com/rf/real" isTestSource="false" />
+    </content>
+    <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
